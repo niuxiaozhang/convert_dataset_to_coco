@@ -6,7 +6,6 @@ import os
 import cv2
 import json
 
-_IMAGE_PATH= r'D:\ThunderDownload\coco\images'
 _INDENT = '' * 4
 _NEW_LINE = '\n'
 _FOLDER_NODE = 'train2017'
@@ -17,7 +16,7 @@ _DIFFICULT = '0'
 _TRUNCATED = '0'
 _POSE = 'Unspecified'
 # 保存的目录
-_ANNOTATION_SAVE_PATH = r'G:\Dataset\car_dataset\coco'
+_ANNOTATION_SAVE_PATH = r'G:\Dataset\car_dataset\coco2017_train'
 
 
 # 创建节点
@@ -102,31 +101,34 @@ def main():
     if fileList == 0:
         os._exit(-1)
 
-    with open('coco_train.json', 'r') as f:
+    with open(r'D:\ThunderDownload\coco\Annotations\annotations_trainval2017\annotations/instances_train2017.json', 'r') as f:
         ann_data = json.load(f)
 
-    current_dirpath = os.path.dirname(os.path.abspath('__file__'))
 
     if not os.path.exists(_ANNOTATION_SAVE_PATH):
         os.mkdir(_ANNOTATION_SAVE_PATH)
 
-    for imageName in fileList:
-        saveName = imageName.strip('.jpg')
-        img = cv2.imread(os.path.join(img_path, imageName))
-        height, width, channel = img.shape
-
+    for images in ann_data['images']:
+        images_imgId = images['id']
+        height = images['height']
+        width = images['width']
+        channel = 3
+        file_name = images['file_name']
+        saveName = file_name.strip('.jpg')
         doc, root_node = create_root_node(saveName, width, height, channel)
         is_save = False
-        for ann in ann_data:
-            imgName = str(ann['filename'])
-            for j in range(12 - len(imgName)):
-                imgName = '0' + imgName
-            if saveName == imgName:
-                print("ann['name']", ann['name'])
-                if ann['name'] == 'car' or ann['name'] == 'bus' or ann['name'] == 'truck':
-                    is_save = True
-                    object_node = createObjectNode(doc, ann)
-                    root_node.appendChild(object_node)
+        for annotation in ann_data['annotations']:
+            ann_imgid = annotation['image_id']
+            if images_imgId == ann_imgid:
+                if annotation['category_id'] == 3 or annotation['category_id'] == 6 or annotation['category_id'] == 8:
+                    if annotation['iscrowd'] == 0:
+                        attrs = {}
+                        attrs['name'] = 'car'
+                        attrs['bndbox'] = annotation['bbox']
+                        is_save = True
+                        object_node = createObjectNode(doc, attrs)
+                        root_node.appendChild(object_node)
+
         if is_save:
             # 写入文件
             xml_file_name = os.path.join(_ANNOTATION_SAVE_PATH, (saveName + '.xml'))
@@ -134,7 +136,10 @@ def main():
             print(xml_file_name)
             writeXMLFile(doc, xml_file_name)
             img_file_name = os.path.join(_ANNOTATION_SAVE_PATH, (saveName + '.jpg'))
+            img = cv2.imread(os.path.join(img_path, saveName + '.jpg'))
             cv2.imwrite(img_file_name, img)
+
+
 
 
 
